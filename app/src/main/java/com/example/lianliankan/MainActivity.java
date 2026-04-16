@@ -1,12 +1,20 @@
 package com.example.lianliankan;
 
 import android.app.AlertDialog;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
+import android.media.SoundPool;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 import androidx.appcompat.app.AppCompatActivity;
+
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
     private GameView gameView;
@@ -15,11 +23,18 @@ public class MainActivity extends AppCompatActivity {
     private Button btnRestart;
     private Button btnShuffle;
     private Button btnHint;
+    private ToggleButton btnMusic;
     
     private int score = 0;
-    private int timeLeft = 180; // 3 minutes
+    private int timeLeft = 180;
     private Handler timerHandler = new Handler();
     private boolean isGameRunning = false;
+    
+    // 音乐系统
+    private MediaPlayer bgmPlayer;
+    private SoundPool soundPool;
+    private int soundMatch, soundWrong, soundWin, soundSelect;
+    private boolean musicEnabled = true;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,10 +47,15 @@ public class MainActivity extends AppCompatActivity {
         btnRestart = findViewById(R.id.btnRestart);
         btnShuffle = findViewById(R.id.btnShuffle);
         btnHint = findViewById(R.id.btnHint);
+        btnMusic = findViewById(R.id.btnMusic);
         
-        gameView.setOnGameCompleteListener(new GameView.OnGameCompleteListener() {
+        // 初始化音乐
+        initSounds();
+        
+        gameView.setOnGameEventListener(new GameView.OnGameEventListener() {
             @Override
             public void onGameComplete() {
+                playWinSound();
                 gameWin();
             }
             
@@ -43,6 +63,21 @@ public class MainActivity extends AppCompatActivity {
             public void onScoreUpdate(int points) {
                 score += points;
                 updateUI();
+            }
+            
+            @Override
+            public void onMatch() {
+                playMatchSound();
+            }
+            
+            @Override
+            public void onWrong() {
+                playWrongSound();
+            }
+            
+            @Override
+            public void onSelect() {
+                playSelectSound();
             }
         });
         
@@ -58,7 +93,77 @@ public class MainActivity extends AppCompatActivity {
             updateUI();
         });
         
+        btnMusic.setChecked(musicEnabled);
+        btnMusic.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            musicEnabled = isChecked;
+            if (musicEnabled) {
+                startBGM();
+            } else {
+                stopBGM();
+            }
+        });
+        
         startGame();
+    }
+    
+    private void initSounds() {
+        // 初始化SoundPool
+        AudioAttributes attrs = new AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_GAME)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build();
+        
+        soundPool = new SoundPool.Builder()
+            .setMaxStreams(4)
+            .setAudioAttributes(attrs)
+            .build();
+        
+        // 加载音效
+        soundMatch = soundPool.load(this, R.raw.match, 1);
+        soundWrong = soundPool.load(this, R.raw.wrong, 1);
+        soundWin = soundPool.load(this, R.raw.win, 1);
+        soundSelect = soundPool.load(this, R.raw.select, 1);
+        
+        // 初始化BGM MediaPlayer
+        bgmPlayer = MediaPlayer.create(this, R.raw.bgm);
+        bgmPlayer.setLooping(true);
+        bgmPlayer.setVolume(0.5f, 0.5f);
+    }
+    
+    private void startBGM() {
+        if (bgmPlayer != null && musicEnabled && !bgmPlayer.isPlaying()) {
+            bgmPlayer.start();
+        }
+    }
+    
+    private void stopBGM() {
+        if (bgmPlayer != null && bgmPlayer.isPlaying()) {
+            bgmPlayer.pause();
+        }
+    }
+    
+    private void playMatchSound() {
+        if (soundPool != null && musicEnabled) {
+            soundPool.play(soundMatch, 1.0f, 1.0f, 1, 0, 1.0f);
+        }
+    }
+    
+    private void playWrongSound() {
+        if (soundPool != null && musicEnabled) {
+            soundPool.play(soundWrong, 0.8f, 0.8f, 1, 0, 1.0f);
+        }
+    }
+    
+    private void playWinSound() {
+        if (soundPool != null && musicEnabled) {
+            soundPool.play(soundWin, 1.0f, 1.0f, 1, 0, 1.0f);
+        }
+    }
+    
+    private void playSelectSound() {
+        if (soundPool != null && musicEnabled) {
+            soundPool.play(soundSelect, 0.6f, 0.6f, 1, 0, 1.0f);
+        }
     }
     
     private void startGame() {
@@ -68,6 +173,7 @@ public class MainActivity extends AppCompatActivity {
         gameView.restartGame();
         updateUI();
         startTimer();
+        startBGM();
     }
     
     private void restartGame() {
@@ -106,8 +212,9 @@ public class MainActivity extends AppCompatActivity {
     
     private void gameWin() {
         stopTimer();
+        stopBGM();
         new AlertDialog.Builder(this)
-            .setTitle("恭喜通关！")
+            .setTitle("🎉 恭喜通关！")
             .setMessage("你的得分: " + score + "\n剩余时间: " + timeLeft + "秒")
             .setPositiveButton("再玩一次", (dialog, which) -> restartGame())
             .setNegativeButton("退出", (dialog, which) -> finish())
@@ -117,8 +224,9 @@ public class MainActivity extends AppCompatActivity {
     
     private void gameOver() {
         stopTimer();
+        stopBGM();
         new AlertDialog.Builder(this)
-            .setTitle("时间到！")
+            .setTitle("⏰ 时间到！")
             .setMessage("你的得分: " + score)
             .setPositiveButton("再试一次", (dialog, which) -> restartGame())
             .setNegativeButton("退出", (dialog, which) -> finish())
@@ -130,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         stopTimer();
+        stopBGM();
     }
     
     @Override
@@ -138,6 +247,7 @@ public class MainActivity extends AppCompatActivity {
         if (!isGameRunning && timeLeft > 0) {
             isGameRunning = true;
             startTimer();
+            startBGM();
         }
     }
     
@@ -145,5 +255,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         stopTimer();
+        if (bgmPlayer != null) {
+            bgmPlayer.stop();
+            bgmPlayer.release();
+            bgmPlayer = null;
+        }
+        if (soundPool != null) {
+            soundPool.release();
+            soundPool = null;
+        }
     }
 }
