@@ -1,51 +1,49 @@
-name: Android CI
+name: Build APK
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ "**" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
     - uses: actions/checkout@v3
     
-    - name: Set up JDK 11
+    - name: Setup Java
       uses: actions/setup-java@v3
       with:
-        java-version: '11'
-        distribution: 'temurin'
-        
+        distribution: temurin
+        java-version: 11
+    
     - name: Setup Android SDK
       uses: android-actions/setup-android@v2
-      
-    - name: Install Gradle
+    
+    - name: Build Debug APK
       run: |
-        curl -s "https://get.sdkman.io" | bash
-        source "$HOME/.sdkman/bin/sdkman-init.sh"
-        sdk install gradle 7.5
+        export ANDROID_HOME=$HOME/android-sdk
+        echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
         
-    - name: Build APK
-      run: |
-        source "$HOME/.sdkman/bin/sdkman-init.sh"
-        gradle assembleDebug --no-daemon
-      
-    - name: Upload APK
+        # Download Gradle
+        wget -q https://services.gradle.org/distributions/gradle-7.5-bin.zip
+        unzip -q gradle-7.5-bin.zip
+        
+        # Build
+        gradle-7.5/bin/gradle assembleDebug --no-daemon
+    
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: app-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
-        
-    - name: Create Release
-      if: github.event_name == 'push'
+        name: lianliankan-debug
+        path: app/build/outputs/apk/debug/*.apk
+    
+    - name: Create Release with APK
       uses: softprops/action-gh-release@v1
+      if: github.event_name == 'push'
       with:
-        files: app/build/outputs/apk/debug/app-debug.apk
-        tag_name: v${{ github.run_number }}
-        name: Release v${{ github.run_number }}
+        tag_name: v1.${{ github.run_number }}
+        name: Lianliankan v1.${{ github.run_number }}
+        files: app/build/outputs/apk/debug/*.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
