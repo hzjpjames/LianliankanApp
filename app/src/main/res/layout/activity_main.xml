@@ -31,7 +31,17 @@
             android:text="时间: 03:00"
             android:textColor="#FFFFFF"
             android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:layout_marginEnd="12dp" />
+        
+        <ToggleButton
+            android:id="@+id/btnMusic"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:textOn="🔊"
+            android:textOff="🔇"
+            android:textSize="16sp"
+            android:background="#43A047" />
     </LinearLayout>
     
     <com.example.lianliankan.GameView
@@ -55,30 +65,30 @@
             android:id="@+id/btnHint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="提示(-3分)"
+            android:text="💡提示(-3)"
             android:textSize="14sp"
             android:layout_margin="4dp"
-            android:background="#FF9800"
+            android:backgroundTint="#FF9800"
             android:textColor="#FFFFFF" />
         
         <Button
             android:id="@+id/btnShuffle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="洗牌(-5分)"
+            android:text="🔀洗牌(-5)"
             android:textSize="14sp"
             android:layout_margin="4dp"
-            android:background="#2196F3"
+            android:backgroundTint="#2196F3"
             android:textColor="#FFFFFF" />
         
         <Button
             android:id="@+id/btnRestart"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="重新开始"
+            android:text="🔄重新开始"
             android:textSize="14sp"
             android:layout_margin="4dp"
-            android:background="#F44336"
+            android:backgroundTint="#F44336"
             android:textColor="#FFFFFF" />
     </LinearLayout>
     
