@@ -4,7 +4,6 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -35,21 +34,38 @@ public class GameView extends View {
     private List<int[]> path;
     private boolean isAnimating = false;
     
-    private int[] icons = {
-        0x1F600, 0x1F601, 0x1F602, 0x1F603, 0x1F604, 0x1F605,
-        0x1F606, 0x1F609, 0x1F60A, 0x1F60B, 0x1F60C, 0x1F60D,
-        0x1F60E, 0x1F60F, 0x1F612, 0x1F613, 0x1F614, 0x1F616,
-        0x1F618, 0x1F61A, 0x1F61C, 0x1F61D, 0x1F61E, 0x1F620
+    // 十二生肖动物 emoji
+    private String[] zodiacAnimals = {
+        "鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"
     };
     
-    private OnGameCompleteListener listener;
+    // 每种动物对应的背景颜色
+    private int[] animalColors = {
+        0xFFE1BEE7, // 鼠 - 淡紫
+        0xFFD7CCC8, // 牛 - 淡棕
+        0xFFFFE0B2, // 虎 - 橙色
+        0xFFF8BBD0, // 兔 - 粉红
+        0xFFFFF9C4, // 龙 - 金黄
+        0xFFC8E6C9, // 蛇 - 淡绿
+        0xFFFFCDD2, // 马 - 淡红
+        0xFFFFF3E0, // 羊 - 奶油
+        0xFFFFFDE7, // 猴 - 淡黄
+        0xFFE1F5FE, // 鸡 - 淡蓝
+        0xFFBBDEFB, // 狗 - 天蓝
+        0xFFFCE4EC  // 猪 - 淡粉
+    };
     
-    public interface OnGameCompleteListener {
+    private OnGameEventListener listener;
+    
+    public interface OnGameEventListener {
         void onGameComplete();
         void onScoreUpdate(int score);
+        void onMatch();
+        void onWrong();
+        void onSelect();
     }
     
-    public void setOnGameCompleteListener(OnGameCompleteListener listener) {
+    public void setOnGameEventListener(OnGameEventListener listener) {
         this.listener = listener;
     }
     
@@ -72,12 +88,13 @@ public class GameView extends View {
         textPaint.setTextAlign(Paint.Align.CENTER);
         
         linePaint = new Paint();
-        linePaint.setColor(Color.YELLOW);
-        linePaint.setStrokeWidth(8);
+        linePaint.setColor(Color.parseColor("#FFD700"));
+        linePaint.setStrokeWidth(6);
         linePaint.setAntiAlias(true);
+        linePaint.setStyle(Paint.Style.STROKE);
         
         bgPaint = new Paint();
-        bgPaint.setColor(Color.parseColor("#2E7D32"));
+        bgPaint.setColor(Color.parseColor("#1B5E20"));
         
         board = new int[ROWS][COLS];
         selected = new boolean[ROWS][COLS];
@@ -91,7 +108,7 @@ public class GameView extends View {
         int pairs = (ROWS * COLS) / 2;
         
         for (int i = 0; i < pairs; i++) {
-            int iconIndex = i % icons.length;
+            int iconIndex = i % 12; // 12生肖
             cards.add(iconIndex);
             cards.add(iconIndex);
         }
@@ -105,7 +122,6 @@ public class GameView extends View {
             }
         }
         
-        // Ensure board is solvable
         while (!hasValidMoves()) {
             Collections.shuffle(cards);
             index = 0;
@@ -122,17 +138,15 @@ public class GameView extends View {
         super.onSizeChanged(w, h, oldw, oldh);
         cellWidth = (w - PADDING * 2) / COLS;
         cellHeight = (h - PADDING * 2) / ROWS;
-        textPaint.setTextSize(cellHeight * 0.6f);
+        textPaint.setTextSize(Math.min(cellWidth, cellHeight) * 0.5f);
     }
     
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         
-        // Draw background
         canvas.drawRect(0, 0, getWidth(), getHeight(), bgPaint);
         
-        // Draw cells
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
                 if (board[i][j] != -1) {
@@ -141,16 +155,15 @@ public class GameView extends View {
             }
         }
         
-        // Draw path
         if (path != null && path.size() > 1) {
             for (int i = 0; i < path.size() - 1; i++) {
                 int[] p1 = path.get(i);
                 int[] p2 = path.get(i + 1);
                 canvas.drawLine(
-                    PADDING + p1[1] * cellWidth + cellWidth / 2,
-                    PADDING + p1[0] * cellHeight + cellHeight / 2,
-                    PADDING + p2[1] * cellWidth + cellWidth / 2,
-                    PADDING + p2[0] * cellHeight + cellHeight / 2,
+                    PADDING + p1[1] * cellWidth + cellWidth / 2f,
+                    PADDING + p1[0] * cellHeight + cellHeight / 2f,
+                    PADDING + p2[1] * cellWidth + cellWidth / 2f,
+                    PADDING + p2[0] * cellHeight + cellHeight / 2f,
                     linePaint
                 );
             }
@@ -158,27 +171,37 @@ public class GameView extends View {
     }
     
     private void drawCell(Canvas canvas, int row, int col) {
-        int left = PADDING + col * cellWidth + 4;
-        int top = PADDING + row * cellHeight + 4;
-        int right = left + cellWidth - 8;
-        int bottom = top + cellHeight - 8;
+        float left = PADDING + col * cellWidth + 3;
+        float top = PADDING + row * cellHeight + 3;
+        float right = left + cellWidth - 6;
+        float bottom = top + cellHeight - 6;
         
-        // Card background
-        paint.setColor(selected[row][col] ? Color.parseColor("#FF9800") : Color.WHITE);
         RectF rect = new RectF(left, top, right, bottom);
-        canvas.drawRoundRect(rect, 12, 12, paint);
         
-        // Border
+        // 选中效果 - 金色边框
+        if (selected[row][col]) {
+            paint.setColor(Color.parseColor("#FFD700"));
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawRoundRect(rect, 10, 10, paint);
+        } else {
+            // 动物对应的背景色
+            paint.setColor(animalColors[board[row][col]]);
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawRoundRect(rect, 10, 10, paint);
+        }
+        
+        // 边框
         paint.setStyle(Paint.Style.STROKE);
-        paint.setColor(Color.parseColor("#1976D2"));
-        paint.setStrokeWidth(3);
-        canvas.drawRoundRect(rect, 12, 12, paint);
+        paint.setColor(Color.parseColor("#1565C0"));
+        paint.setStrokeWidth(2);
+        canvas.drawRoundRect(rect, 10, 10, paint);
         paint.setStyle(Paint.Style.FILL);
         
-        // Emoji
-        textPaint.setColor(Color.BLACK);
-        String emoji = new String(Character.toChars(icons[board[row][col]]));
-        canvas.drawText(emoji, (left + right) / 2f, (top + bottom) / 2f + textPaint.getTextSize() / 3, textPaint);
+        // 绘制生肖文字
+        textPaint.setColor(Color.parseColor("#333333"));
+        textPaint.setFakeBoldText(true);
+        String animal = zodiacAnimals[board[row][col]];
+        canvas.drawText(animal, (left + right) / 2f, (top + bottom) / 2f + textPaint.getTextSize() / 3f, textPaint);
     }
     
     @Override
@@ -199,6 +222,7 @@ public class GameView extends View {
             firstRow = row;
             firstCol = col;
             selected[row][col] = true;
+            if (listener != null) listener.onSelect();
             invalidate();
         } else if (firstRow == row && firstCol == col) {
             selected[row][col] = false;
@@ -216,11 +240,14 @@ public class GameView extends View {
                 isAnimating = true;
                 invalidate();
                 
+                final int fRow1 = firstRow, fCol1 = firstCol;
+                final int fRow2 = secondRow, fCol2 = secondCol;
+                
                 postDelayed(() -> {
-                    board[firstRow][firstCol] = -1;
-                    board[secondRow][secondCol] = -1;
-                    selected[firstRow][firstCol] = false;
-                    selected[secondRow][secondCol] = false;
+                    board[fRow1][fCol1] = -1;
+                    board[fRow2][fCol2] = -1;
+                    selected[fRow1][fCol1] = false;
+                    selected[fRow2][fCol2] = false;
                     firstRow = -1;
                     firstCol = -1;
                     secondRow = -1;
@@ -231,12 +258,11 @@ public class GameView extends View {
                     
                     if (listener != null) {
                         listener.onScoreUpdate(10);
+                        listener.onMatch();
                     }
                     
                     if (isGameComplete()) {
-                        if (listener != null) {
-                            listener.onGameComplete();
-                        }
+                        if (listener != null) listener.onGameComplete();
                     } else if (!hasValidMoves()) {
                         shuffleBoard();
                         Toast.makeText(getContext(), "没有可消除的组合，重新洗牌！", Toast.LENGTH_SHORT).show();
@@ -245,6 +271,7 @@ public class GameView extends View {
             } else {
                 selected[firstRow][firstCol] = false;
                 selected[row][col] = false;
+                if (listener != null) listener.onWrong();
                 firstRow = -1;
                 firstCol = -1;
                 invalidate();
@@ -254,35 +281,33 @@ public class GameView extends View {
             firstRow = row;
             firstCol = col;
             selected[row][col] = true;
+            if (listener != null) listener.onSelect();
             invalidate();
         }
     }
     
     private List<int[]> findPath(int r1, int c1, int r2, int c2) {
-        // Direct line
         if (canConnectDirectly(r1, c1, r2, c2)) {
-            List<int[]> path = new ArrayList<>();
-            path.add(new int[]{r1, c1});
-            path.add(new int[]{r2, c2});
-            return path;
+            List<int[]> p = new ArrayList<>();
+            p.add(new int[]{r1, c1});
+            p.add(new int[]{r2, c2});
+            return p;
         }
         
-        // One corner
         for (int i = -1; i <= ROWS; i++) {
             for (int j = -1; j <= COLS; j++) {
                 if ((i == r1 && j == c1) || (i == r2 && j == c2)) continue;
                 if ((i < 0 || i >= ROWS || j < 0 || j >= COLS || board[i][j] == -1) &&
                     canConnectDirectly(r1, c1, i, j) && canConnectDirectly(i, j, r2, c2)) {
-                    List<int[]> path = new ArrayList<>();
-                    path.add(new int[]{r1, c1});
-                    path.add(new int[]{i, j});
-                    path.add(new int[]{r2, c2});
-                    return path;
+                    List<int[]> p = new ArrayList<>();
+                    p.add(new int[]{r1, c1});
+                    p.add(new int[]{i, j});
+                    p.add(new int[]{r2, c2});
+                    return p;
                 }
             }
         }
         
-        // Two corners
         for (int i = -1; i <= ROWS; i++) {
             for (int j = -1; j <= COLS; j++) {
                 if ((i < 0 || i >= ROWS || j < 0 || j >= COLS || board[i][j] == -1) &&
@@ -291,12 +316,12 @@ public class GameView extends View {
                         for (int j2 = -1; j2 <= COLS; j2++) {
                             if ((i2 < 0 || i2 >= ROWS || j2 < 0 || j2 >= COLS || board[i2][j2] == -1) &&
                                 canConnectDirectly(i, j, i2, j2) && canConnectDirectly(i2, j2, r2, c2)) {
-                                List<int[]> path = new ArrayList<>();
-                                path.add(new int[]{r1, c1});
-                                path.add(new int[]{i, j});
-                                path.add(new int[]{i2, j2});
-                                path.add(new int[]{r2, c2});
-                                return path;
+                                List<int[]> p = new ArrayList<>();
+                                p.add(new int[]{r1, c1});
+                                p.add(new int[]{i, j});
+                                p.add(new int[]{i2, j2});
+                                p.add(new int[]{r2, c2});
+                                return p;
                             }
                         }
                     }
