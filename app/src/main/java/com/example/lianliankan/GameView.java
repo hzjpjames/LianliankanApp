@@ -417,12 +417,13 @@ public class GameView extends View {
                         for (int j2 = 0; j2 < COLS; j2++) {
                             if ((i != i2 || j != j2) && board[i2][j2] != -1 && 
                                 board[i][j] == board[i2][j2] && findPath(i, j, i2, j2) != null) {
-                                selected[i][j] = true;
-                                selected[i2][j2] = true;
+                                final int fi = i, fj = j, fi2 = i2, fj2 = j2;
+                                selected[fi][fj] = true;
+                                selected[fi2][fj2] = true;
                                 invalidate();
                                 postDelayed(() -> {
-                                    selected[i][j] = false;
-                                    selected[i2][j2] = false;
+                                    selected[fi][fj] = false;
+                                    selected[fi2][fj2] = false;
                                     invalidate();
                                 }, 1000);
                                 return;
