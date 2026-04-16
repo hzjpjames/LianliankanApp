@@ -9,16 +9,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup Java
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: temurin
         java-version: 11
     
     - name: Setup Android SDK
-      uses: android-actions/setup-android@v2
+      uses: android-actions/setup-android@v3
     
     - name: Build Debug APK
       run: |
@@ -33,13 +33,13 @@ jobs:
         gradle-7.5/bin/gradle assembleDebug --no-daemon
     
     - name: Upload APK Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: lianliankan-debug
         path: app/build/outputs/apk/debug/*.apk
     
     - name: Create Release with APK
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       if: github.event_name == 'push'
       with:
         tag_name: v1.${{ github.run_number }}
