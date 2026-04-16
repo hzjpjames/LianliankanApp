@@ -20,20 +20,18 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
     
-    - name: Accept licenses and install build tools
-      run: |
-        echo "y" | sdkmanager --licenses
-        sdkmanager "build-tools;28.0.3" "platforms;android-28"
-    
     - name: Build Debug APK
       run: |
-        export ANDROID_HOME=$HOME/android-sdk
+        export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
         
-        # Download Gradle
+        # Install required SDK components
+        sdkmanager "build-tools;28.0.3" "platforms;android-28"
+        
+        # Download and extract Gradle 7.5
         wget -q https://services.gradle.org/distributions/gradle-7.5-bin.zip
         unzip -q gradle-7.5-bin.zip
         
-        # Build
+        # Build APK
         gradle-7.5/bin/gradle assembleDebug --no-daemon
     
     - name: Upload APK Artifact
