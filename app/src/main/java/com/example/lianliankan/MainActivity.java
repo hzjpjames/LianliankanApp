@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -24,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnShuffle;
     private Button btnHint;
     private ToggleButton btnMusic;
+    private Button btnSoundTheme;
     
     private int score = 0;
     private int timeLeft = 180;
@@ -33,8 +35,16 @@ public class MainActivity extends AppCompatActivity {
     // 音乐系统
     private MediaPlayer bgmPlayer;
     private SoundPool soundPool;
-    private int soundMatch, soundWrong, soundWin, soundSelect;
+    private int[][] soundThemes; // [theme][soundType]
+    private int currentTheme = 0; // 0=经典, 1=卡通, 2=电子
+    private final String[] themeNames = {"🎵经典", "🎈卡通", "⚡电子"};
     private boolean musicEnabled = true;
+    
+    // 音效类型常量
+    private static final int SOUND_MATCH = 0;
+    private static final int SOUND_WRONG = 1;
+    private static final int SOUND_WIN = 2;
+    private static final int SOUND_SELECT = 3;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
         btnShuffle = findViewById(R.id.btnShuffle);
         btnHint = findViewById(R.id.btnHint);
         btnMusic = findViewById(R.id.btnMusic);
+        btnSoundTheme = findViewById(R.id.btnSoundTheme);
         
         // 初始化音乐
         initSounds();
@@ -103,6 +114,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         
+        btnSoundTheme.setOnClickListener(v -> {
+            currentTheme = (currentTheme + 1) % 3;
+            btnSoundTheme.setText(themeNames[currentTheme]);
+            Toast.makeText(this, "音效切换为: " + themeNames[currentTheme], Toast.LENGTH_SHORT).show();
+        });
+        
         startGame();
     }
     
@@ -114,15 +131,30 @@ public class MainActivity extends AppCompatActivity {
             .build();
         
         soundPool = new SoundPool.Builder()
-            .setMaxStreams(4)
+            .setMaxStreams(8)
             .setAudioAttributes(attrs)
             .build();
         
-        // 加载音效
-        soundMatch = soundPool.load(this, R.raw.match, 1);
-        soundWrong = soundPool.load(this, R.raw.wrong, 1);
-        soundWin = soundPool.load(this, R.raw.win, 1);
-        soundSelect = soundPool.load(this, R.raw.select, 1);
+        // 3套音效主题 [theme][type]
+        soundThemes = new int[3][4];
+        
+        // Theme 0: 经典音效
+        soundThemes[0][SOUND_MATCH] = soundPool.load(this, R.raw.match, 1);
+        soundThemes[0][SOUND_WRONG] = soundPool.load(this, R.raw.wrong, 1);
+        soundThemes[0][SOUND_WIN] = soundPool.load(this, R.raw.win, 1);
+        soundThemes[0][SOUND_SELECT] = soundPool.load(this, R.raw.select, 1);
+        
+        // Theme 1: 卡通音效
+        soundThemes[1][SOUND_MATCH] = soundPool.load(this, R.raw.match_cartoon, 1);
+        soundThemes[1][SOUND_WRONG] = soundPool.load(this, R.raw.wrong_cartoon, 1);
+        soundThemes[1][SOUND_WIN] = soundPool.load(this, R.raw.win_cartoon, 1);
+        soundThemes[1][SOUND_SELECT] = soundPool.load(this, R.raw.select_cartoon, 1);
+        
+        // Theme 2: 电子音效
+        soundThemes[2][SOUND_MATCH] = soundPool.load(this, R.raw.match_electro, 1);
+        soundThemes[2][SOUND_WRONG] = soundPool.load(this, R.raw.wrong_electro, 1);
+        soundThemes[2][SOUND_WIN] = soundPool.load(this, R.raw.win_electro, 1);
+        soundThemes[2][SOUND_SELECT] = soundPool.load(this, R.raw.select_electro, 1);
         
         // 初始化BGM MediaPlayer
         bgmPlayer = MediaPlayer.create(this, R.raw.bgm);
@@ -144,25 +176,25 @@ public class MainActivity extends AppCompatActivity {
     
     private void playMatchSound() {
         if (soundPool != null && musicEnabled) {
-            soundPool.play(soundMatch, 1.0f, 1.0f, 1, 0, 1.0f);
+            soundPool.play(soundThemes[currentTheme][SOUND_MATCH], 1.0f, 1.0f, 1, 0, 1.0f);
         }
     }
     
     private void playWrongSound() {
         if (soundPool != null && musicEnabled) {
-            soundPool.play(soundWrong, 0.8f, 0.8f, 1, 0, 1.0f);
+            soundPool.play(soundThemes[currentTheme][SOUND_WRONG], 0.8f, 0.8f, 1, 0, 1.0f);
         }
     }
     
     private void playWinSound() {
         if (soundPool != null && musicEnabled) {
-            soundPool.play(soundWin, 1.0f, 1.0f, 1, 0, 1.0f);
+            soundPool.play(soundThemes[currentTheme][SOUND_WIN], 1.0f, 1.0f, 1, 0, 1.0f);
         }
     }
     
     private void playSelectSound() {
         if (soundPool != null && musicEnabled) {
-            soundPool.play(soundSelect, 0.6f, 0.6f, 1, 0, 1.0f);
+            soundPool.play(soundThemes[currentTheme][SOUND_SELECT], 0.6f, 0.6f, 1, 0, 1.0f);
         }
     }
     
