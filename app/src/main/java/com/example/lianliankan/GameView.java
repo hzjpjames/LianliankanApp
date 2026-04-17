@@ -36,7 +36,7 @@ public class GameView extends View {
     
     // 十二生肖动物 emoji
     private String[] zodiacAnimals = {
-        "鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"
+        "🐭", "🐮", "🐯", "🐰", "🐲", "🐍", "🐴", "🐑", "🐵", "🐔", "🐶", "🐷"
     };
     
     // 每种动物对应的背景颜色
@@ -197,9 +197,9 @@ public class GameView extends View {
         canvas.drawRoundRect(rect, 10, 10, paint);
         paint.setStyle(Paint.Style.FILL);
         
-        // 绘制生肖文字
-        textPaint.setColor(Color.parseColor("#333333"));
-        textPaint.setFakeBoldText(true);
+        // 绘制生肖emoji
+        textPaint.setColor(Color.BLACK);
+        textPaint.setFakeBoldText(false);
         String animal = zodiacAnimals[board[row][col]];
         canvas.drawText(animal, (left + right) / 2f, (top + bottom) / 2f + textPaint.getTextSize() / 3f, textPaint);
     }
