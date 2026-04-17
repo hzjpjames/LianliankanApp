@@ -23,15 +23,9 @@ jobs:
     - name: Build Debug APK
       run: |
         export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-        
-        # Install required SDK components
         sdkmanager "build-tools;33.0.0" "platforms;android-33"
-        
-        # Download and extract Gradle 7.5
         wget -q https://services.gradle.org/distributions/gradle-7.5-bin.zip
         unzip -q gradle-7.5-bin.zip
-        
-        # Build APK
         gradle-7.5/bin/gradle assembleDebug --no-daemon
     
     - name: Upload APK Artifact
@@ -40,12 +34,32 @@ jobs:
         name: lianliankan-debug
         path: app/build/outputs/apk/debug/*.apk
     
-    - name: Create Release with APK
-      uses: softprops/action-gh-release@v2
+    - name: Create Release via GitHub API
       if: github.event_name == 'push'
-      with:
-        tag_name: v1.${{ github.run_number }}
-        name: Lianliankan v1.${{ github.run_number }}
-        files: app/build/outputs/apk/debug/*.apk
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RUN_ID: ${{ github.run_id }}
+        RUN_NUM: ${{ github.run_number }}
+        ARTIFACT_NAME: lianliankan-debug
+      run: |
+        # Download artifact from this run
+        ARTIFACT_JSON=$(curl -sL -H "Authorization: Bearer $GH_TOKEN" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID/artifacts" \
+          | python3 -c "import sys,json; d=json.load(sys.stdin); [print(a['archive_download_url']) for a in d['artifacts'] if a['name']=='$ARTIFACT_NAME']")
+        
+        curl -sL -H "Authorization: Bearer $GH_TOKEN" -o artifact.zip "$ARTIFACT_JSON"
+        
+        # Create tag and release
+        TAG="v1.$RUN_NUM"
+        RELEASE_JSON=$(curl -sL -X POST -H "Authorization: Bearer $GH_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"tag_name\":\"$TAG\",\"name\":\"Lianliankan $TAG\",\"generate_release_notes\":false}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases")
+        
+        UPLOAD_URL=$(echo "$RELEASE_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['upload_url'].split('{')[0])")
+        
+        curl -sL -X POST \
+          -H "Authorization: Bearer $GH_TOKEN" \
+          -H "Content-Type: application/vnd.android.apk" \
+          --data-binary "@artifact.zip" \
+          "${UPLOAD_URL}?name=lianliankan-$TAG.apk"
