@@ -33,15 +33,3 @@ jobs:
       with:
         name: lianliankan-debug
         path: app/build/outputs/apk/debug/*.apk
-    
-    - name: Create Release
-      if: github.event_name == 'push'
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        RUN_NUM: ${{ github.run_number }}
-      run: |
-        APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
-        TAG="v1.${RUN_NUM}"
-        gh release create "$TAG" "$APK" \
-          --title "Lianliankan $TAG" \
-          --repo "${{ github.repository }}"
